@@ -1,9 +1,13 @@
 #! /bin/bash
-version="0.10.0 from 2021-04-24"
-# Always download the latest version here: http://www.eurosistems.ro/back-res
+version="0.10.1 from 2022-06-19"
+# The original version can be found at: http://www.eurosistems.ro/back-res
 # Thanks or questions: http://www.howtoforge.com/forums/showthread.php?t=41609
 #
 # CHANGELOG:
+# -----------------------------------------------------------------------------
+# version 0.10.1 - 2022-06-19 (by miguelal)
+# --------------------------
+# - Exclusion of information_schema and performance_schema on export
 # -----------------------------------------------------------------------------
 # version 0.10.0 - 2021-04-24 (by Giuseppe Benigno <giuseppe.benigno AT gmail.com>)
 # --------------------------
@@ -380,13 +384,15 @@ backup () {
 		log "Starting automatic repair and optimize for all databases..."
 		mysqlcheck -u$DB_USER -p$DB_PASSWORD --all-databases --optimize --auto-repair --silent 2>&1
 		### Starting database dumps
-		for i in $(mysql -u$DB_USER -p$DB_PASSWORD -Bse 'show databases'); do
-			log "Starting mysqldump $i"
-			$(mysqldump -u$DB_USER -p$DB_PASSWORD $i --allow-keywords --comments=false --routines --triggers --add-drop-table > $TMP_DIR/db-$i-$FULL_DATE.sql)
-			$TAR $COMPRESS_ARGS $BACKUP_DIR/$MONTH_DATE/db-$i-$FULL_DATE.tar.bz2 -C $TMP_DIR db-$i-$FULL_DATE.sql
-			rm -rf $TMP_DIR/db-$i-$FULL_DATE.sql
-			log "Dump OK. $i database saved OK!"
-		done
+        for i in $(mysql -u$DB_USER -p$DB_PASSWORD -Bse 'show databases'); do
+            if [[ "$i" != "information_schema" && "$i" != "performance_schema" ]]; then
+            log "Starting mysqldump $i"
+            $(mysqldump -u$DB_USER -p$DB_PASSWORD $i --allow-keywords --comments=false --routines --triggers --add-drop-table > $TMP_DIR/db-$i-$FULL_DATE.sql)
+            $TAR $COMPRESS_ARGS $BACKUP_DIR/$MONTH_DATE/db-$i-$FULL_DATE.tar.bz2 -C $TMP_DIR db-$i-$FULL_DATE.sql
+            rm -rf $TMP_DIR/db-$i-$FULL_DATE.sql
+            log "Dump OK. $i database saved OK!"
+        fi
+        done
 	}
 
 	#############
